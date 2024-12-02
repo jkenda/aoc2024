@@ -1,6 +1,15 @@
 ODINC=../ODIN/Odin/odin
 
-all: day_1
+.PHONY: clean
+.SECONDARY:
 
-%: src/%.odin
-	$(ODINC) run $< -file -- input/$@
+all: day_1 day_2
+
+%: %.bin
+	./$< input/$@
+
+%.bin: src/%.odin
+	$(ODINC) build $< -file
+
+clean:
+	'rm' -f *.bin
