@@ -3,7 +3,7 @@ ODINC=../ODIN/Odin/odin
 .PHONY: clean
 .SECONDARY:
 
-all: day_1 day_2
+all: day_1 day_2 day_3
 
 %: %.bin
 	./$< input/$@
