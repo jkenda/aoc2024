@@ -25,37 +25,8 @@ main :: proc() {
             if i_mul == -1 { break }
             str = str[i_mul:]
 
-            i_opening := len("mul")
-            i_comma := strings.index(str, ",")
-            i_closing := strings.index(str, ")")
-            i_mul_next := strings.index(str[i_opening:], "mul(")
-
-            defer str = str[i_opening:]
-
-            i_1st_begin := i_opening + 1
-            i_1st_end   := i_comma
-
-            i_2nd_begin := i_comma + 1
-            i_2nd_end   := i_closing
-
-            // illegal format
-            if i_1st_begin > i_1st_end { continue }
-            if i_2nd_begin > i_2nd_end { continue }
-
-            len_1st := i_1st_end - i_1st_begin
-            len_2nd := i_2nd_end - i_2nd_begin
-
-            // 1-3 digit numbers
-            if len_1st < 1 || len_1st > 3 { continue }
-            if len_2nd < 1 || len_2nd > 3 { continue }
-
-            num_1st, ok1 := strconv.parse_uint(str[i_1st_begin:i_1st_end])
-            num_2nd, ok2 := strconv.parse_uint(str[i_2nd_begin:i_2nd_end])
-
-            // error parsing
-            if !ok1 || !ok2 { continue }
-
-            sum += num_1st * num_2nd
+            defer str = str[len("mul"):]
+            sum += parse_mul(str)
         }
 
         fmt.println(sum)
@@ -74,6 +45,7 @@ main :: proc() {
 
             i_do   := strings.last_index(str[:i_mul], "do()")
             i_dont := strings.last_index(str[:i_mul], "don't()")
+            str = str[i_mul:]
 
             if i_do != -1 && i_do > i_dont {
                 enabled = true
@@ -82,44 +54,44 @@ main :: proc() {
                 enabled = false
             }
 
-            str = str[i_mul:]
-
-            i_opening := len("mul")
-            i_comma := strings.index(str, ",")
-            i_closing := strings.index(str, ")")
-
-            defer str = str[i_opening:]
-
+            defer str = str[len("mul"):]
             if !enabled { continue }
-
-            i_1st_begin := i_opening + 1
-            i_1st_end   := i_comma
-
-            i_2nd_begin := i_comma + 1
-            i_2nd_end   := i_closing
-
-            // illegal format
-            if i_1st_begin > i_1st_end { continue }
-            if i_2nd_begin > i_2nd_end { continue }
-
-            len_1st := i_1st_end - i_1st_begin
-            len_2nd := i_2nd_end - i_2nd_begin
-
-            // 1-3 digit numbers
-            if len_1st < 1 || len_1st > 3 { continue }
-            if len_2nd < 1 || len_2nd > 3 { continue }
-
-            num_1st, ok1 := strconv.parse_uint(str[i_1st_begin:i_1st_end])
-            num_2nd, ok2 := strconv.parse_uint(str[i_2nd_begin:i_2nd_end])
-
-            // error parsing
-            if !ok1 || !ok2 { continue }
-
-            sum += num_1st * num_2nd
+            sum += parse_mul(str)
         }
 
         fmt.println(sum)
     }
 
     defer delete(data)
+}
+
+parse_mul :: proc(str: string) -> uint {
+    i_opening := len("mul")
+    i_comma := strings.index(str, ",")
+    i_closing := strings.index(str, ")")
+
+    i_1st_begin := i_opening + 1
+    i_1st_end   := i_comma
+
+    i_2nd_begin := i_comma + 1
+    i_2nd_end   := i_closing
+
+    // illegal format
+    if i_1st_begin > i_1st_end { return 0 }
+    if i_2nd_begin > i_2nd_end { return 0 }
+
+    len_1st := i_1st_end - i_1st_begin
+    len_2nd := i_2nd_end - i_2nd_begin
+
+    // 1-3 digit numbers
+    if len_1st < 1 || len_1st > 3 { return 0 }
+    if len_2nd < 1 || len_2nd > 3 { return 0 }
+
+    num_1st, ok1 := strconv.parse_uint(str[i_1st_begin:i_1st_end])
+    num_2nd, ok2 := strconv.parse_uint(str[i_2nd_begin:i_2nd_end])
+
+    // error parsing
+    if !ok1 || !ok2 { return 0 }
+
+    return num_1st * num_2nd
 }
