@@ -2,18 +2,13 @@ package main
 
 import "core:os"
 import "core:fmt"
-import "core:slice"
 import "core:strings"
-
-Point :: struct {
-    x: int,
-    y: int,
-}
 
 Mode :: enum {
     Horizontal,
     Vertical,
     Diagonal,
+    Cross,
 }
 
 Mask :: distinct [][]u8
@@ -47,11 +42,35 @@ MASKS_DIAGONAL : []Mask = {
      { '.', 'M', '.', '.' },
      { 'X', '.', '.', '.' }},
 }
+MASKS_CROSS : []Mask = {
+    {{ 'M', '.', 'M' },
+     { '.', 'A', '.' },
+     { 'S', '.', 'S' }},
+
+    {{ 'M', '.', 'S' },
+     { '.', 'A', '.' },
+     { 'M', '.', 'S' }},
+
+    {{ 'S', '.', 'M' },
+     { '.', 'A', '.' },
+     { 'S', '.', 'M' }},
+
+    {{ 'S', '.', 'S' },
+     { '.', 'A', '.' },
+     { 'M', '.', 'M' }},
+}
 
 MASKS : map[Mode][]Mask = {
     .Horizontal = MASKS_HORIZONTAL,
     .Vertical   = MASKS_VERTICAL,
     .Diagonal   = MASKS_DIAGONAL,
+    .Cross      = MASKS_CROSS,
+}
+
+
+Point :: struct {
+    x: int,
+    y: int,
 }
 
 main :: proc() {
@@ -64,23 +83,21 @@ main :: proc() {
     assert(len(lines) > 0)
 
     { // part 1
-        occur : uint = 0
-        for line, i in lines {
-            for _, j in line {
-                point := Point{ x=j, y=i }
+        occur := find_occurences(lines, {
+            .Horizontal,
+            .Vertical,
+            .Diagonal,
+        })
+        fmt.println(occur)
+    }
 
-                occur += find(.Horizontal, lines, point)
-                occur += find(.Vertical, lines, point)
-                occur += find(.Diagonal, lines, point)
-            }
-        }
-
+    { // part 2
+        occur := find_occurences(lines, { .Cross })
         fmt.println(occur)
     }
 }
 
-read_and_parse :: proc(path: string) -> (data: []u8, lines: []string, err: os.Error)
-{
+read_and_parse :: proc(path: string) -> (data: []u8, lines: []string, err: os.Error) {
     data = os.read_entire_file_or_err(path) or_return
 
     str := string(data)
@@ -90,11 +107,18 @@ read_and_parse :: proc(path: string) -> (data: []u8, lines: []string, err: os.Er
     return
 }
 
-find :: proc(mode: Mode, lines: []string, start: Point) -> uint {
+find_occurences :: proc(lines: []string, modes: []Mode) -> uint {
     occur : uint = 0
 
-    for mask in MASKS[mode] {
-        occur += match_mask(lines, mask, start)
+    for mode in modes {
+        for mask in MASKS[mode] {
+            for line, i in lines {
+                for _, j in line {
+                    start := Point{ x=j, y=i }
+                    occur += match_mask(lines, mask, start)
+                }
+            }
+        }
     }
 
     return occur

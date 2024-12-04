@@ -9,7 +9,7 @@ all: day_1 day_2 day_3 day_4
 	./$< input/$@
 
 %.bin: src/%.odin
-	$(ODINC) build $< -file
+	$(ODINC) build $< -file -o:speed
 
 clean:
 	'rm' -f *.bin
