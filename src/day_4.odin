@@ -5,8 +5,6 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 
-XMAS :: "XMAS"
-
 Point :: struct {
     x: int,
     y: int,
@@ -18,6 +16,44 @@ Mode :: enum {
     Diagonal,
 }
 
+Mask :: distinct [][]u8
+
+MASKS_HORIZONTAL : []Mask = {
+    {{ 'X', 'M', 'A', 'S' }},
+    {{ 'S', 'A', 'M', 'X' }},
+}
+MASKS_VERTICAL : []Mask = {
+    { {'X'}, {'M'}, {'A'}, {'S'} },
+    { {'S'}, {'A'}, {'M'}, {'X'} },
+}
+MASKS_DIAGONAL : []Mask = {
+    {{ 'X', '.', '.', '.' },
+     { '.', 'M', '.', '.' },
+     { '.', '.', 'A', '.' },
+     { '.', '.', '.', 'S' }},
+
+    {{ 'S', '.', '.', '.' },
+     { '.', 'A', '.', '.' },
+     { '.', '.', 'M', '.' },
+     { '.', '.', '.', 'X' }},
+
+    {{ '.', '.', '.', 'X' },
+     { '.', '.', 'M', '.' },
+     { '.', 'A', '.', '.' },
+     { 'S', '.', '.', '.' }},
+
+    {{ '.', '.', '.', 'S' },
+     { '.', '.', 'A', '.' },
+     { '.', 'M', '.', '.' },
+     { 'X', '.', '.', '.' }},
+}
+
+MASKS : map[Mode][]Mask = {
+    .Horizontal = MASKS_HORIZONTAL,
+    .Vertical   = MASKS_VERTICAL,
+    .Diagonal   = MASKS_DIAGONAL,
+}
+
 main :: proc() {
     data, lines, err := read_and_parse(os.args[1])
     if err != nil {
@@ -25,6 +61,7 @@ main :: proc() {
         return
     }
     defer delete(data)
+    assert(len(lines) > 0)
 
     { // part 1
         occur : uint = 0
@@ -56,70 +93,30 @@ read_and_parse :: proc(path: string) -> (data: []u8, lines: []string, err: os.Er
 find :: proc(mode: Mode, lines: []string, start: Point) -> uint {
     occur : uint = 0
 
-    switch mode {
-    case .Horizontal:
-        line := lines[start.y]
-        end_x := start.x + len(XMAS)
-        if end_x > len(lines[0]) { return 0 }
-
-        occur += occurrences(line[start.x:end_x])
-
-    case .Vertical:
-        end_y := start.y + len(XMAS)
-        if end_y > len(lines) { return 0 }
-
-        str: [len(XMAS)]u8
-        for line, idx in lines[start.y:end_y] {
-            str[idx] = line[start.x]
-        }
-
-        occur += occurrences(str[:])
-
-   case .Diagonal:
-        end_x := start.x + len(XMAS)
-        end_y := start.y + len(XMAS)
-        if end_y > len(lines) { return 0 }
-        if end_x > len(lines[0]) { return 0 }
-
-        str: [len(XMAS)]u8
-        {
-            for idx in 0..<len(XMAS) {
-                str[idx] = lines[start.y + idx][start.x + idx]
-            }
-
-            occur += occurrences(str[:])
-        }
-
-        {
-            for idx in 0..<len(XMAS) {
-                str[idx] = lines[start.y + idx][end_x - idx - 1]
-            }
-
-            occur += occurrences(str[:])
-        }
+    for mask in MASKS[mode] {
+        occur += match_mask(lines, mask, start)
     }
 
     return occur
 }
 
-occurrences :: proc {
-    occurrences_in_string,
-    occurrences_in_bytes,
-}
+match_mask :: proc(lines: []string, mask: Mask, start: Point) -> uint {
+    lines_height := len(lines)
+    lines_width  := len(lines[0])
 
-occurrences_in_string :: proc(word: string) -> (occur: uint) {
-    occur += 1 if strings.starts_with(word, XMAS) else 0
+    mask_height := len(mask)
+    mask_width  := len(mask[0])
 
-    reversed := strings.reverse(word)
-    defer delete(reversed)
+    if start.y + mask_height > lines_height { return 0 }
+    if start.x + mask_width  > lines_width  { return 0 }
 
-    occur += 1 if strings.starts_with(reversed, XMAS) else 0
-    return
-}
-
-occurrences_in_bytes :: proc(word: []u8) -> (occur: uint) {
-    occur += string(word[:]) == XMAS
-    slice.reverse(word[:])
-    occur += string(word[:]) == XMAS
-    return
+    for i in 0..<mask_height {
+        for j in 0..<mask_width {
+            if mask[i][j] == '.' { continue }
+            if mask[i][j] != lines[start.y+i][start.x+j] {
+                return 0
+            }
+        }
+    }
+    return 1
 }
