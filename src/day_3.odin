@@ -2,10 +2,8 @@ package main
 
 import "core:os"
 import "core:fmt"
-import "core:slice"
 import "core:strings"
 import "core:strconv"
-import "core:unicode"
 
 main :: proc() {
     data, err := os.read_entire_file_or_err(os.args[1])
@@ -13,6 +11,7 @@ main :: proc() {
         fmt.println(err, ":", os.error_string(err))
         return
     }
+    defer delete(data)
 
     { // part 1
         str := string(data)
@@ -61,8 +60,6 @@ main :: proc() {
 
         fmt.println(sum)
     }
-
-    defer delete(data)
 }
 
 parse_mul :: proc(str: string) -> uint {
