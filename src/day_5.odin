@@ -12,12 +12,11 @@ Parsing_Section :: enum {
     Pages_To_Produce,
 }
 
-Rule :: struct {
-    before, after: int
-}
 Update :: distinct [dynamic]int
+Rule   :: struct { before, after: int }
+Rules  :: map[Rule]struct{}
 Input  :: struct {
-    ordering_rules: [dynamic]Rule,
+    ordering_rules: Rules,
     pages_to_produce: [dynamic]Update,
 }
 
@@ -40,9 +39,30 @@ main :: proc() {
     { // part 1
         sum := 0
 
-        for update, i in input.pages_to_produce {
+        for &update, i in input.pages_to_produce {
             // which updates are in order
-            if is_in_order(input.ordering_rules[:], update[:]) {
+            if _, ok := out_of_order(input.ordering_rules, update[:]); !ok {
+                middle_page := update[len(update) / 2]
+                sum += middle_page
+            }
+        }
+
+        fmt.println(sum)
+    }
+
+    { // part 2
+        sum := 0
+
+        for &update, i in input.pages_to_produce {
+            // fix the order of updates
+            is_out_of_order := false
+
+            for idxs in out_of_order(input.ordering_rules, update[:]) {
+                is_out_of_order = true
+                slice.swap(update[:], idxs[0], idxs[1])
+            }
+
+            if (is_out_of_order) {
                 middle_page := update[len(update) / 2]
                 sum += middle_page
             }
@@ -77,7 +97,7 @@ read_and_parse :: proc(path: string) -> (input: Input, err: os.Error) {
             page_after , ok2 := strconv.parse_int(str_rule[1])
             assert(ok1 && ok2)
 
-            append(&input.ordering_rules, Rule{ page_before, page_after })
+            input.ordering_rules[Rule{ page_before, page_after }] = {}
 
         case .Pages_To_Produce:
             str_update := strings.split(line, ",") or_return
@@ -98,17 +118,18 @@ read_and_parse :: proc(path: string) -> (input: Input, err: os.Error) {
     return
 }
 
-is_in_order :: proc(ordering_rules: []Rule, update: []int) -> bool {
+out_of_order :: proc(ordering_rules: Rules, update: []int) -> ([2]int, bool) {
     for _, i in update {
-        for _, j in update {
-            if i == j { continue }
-
-            i_before := min(i, j)
-            i_after  := max(i, j)
-            opposite_rule := Rule { update[i_after], update[i_before] }
-            if slice.contains(ordering_rules, opposite_rule) { return false }
+        #reverse for _, j in update {
+            opposite_rule := Rule {
+                before = update[max(i, j)],
+                after  = update[min(i, j)],
+            }
+            if _, ok := ordering_rules[opposite_rule]; ok {
+                return { i, j }, true
+            }
         }
     }
 
-    return true
+    return { 0, 0 }, false
 }
