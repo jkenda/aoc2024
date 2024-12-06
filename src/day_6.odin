@@ -4,13 +4,11 @@ import "core:os"
 import "core:fmt"
 import "core:strings"
 
-Direction     :: enum { Up, Down, Left, Right }
-Position      :: distinct [2]int
-Direction_Set :: distinct map[Direction]struct{}
-Position_Map  :: distinct map[Position]Direction_Set
+Direction :: enum { Up, Down, Left, Right }
+Position  :: distinct [2]int
 
 // current state of the program
-Map :: distinct [][]u8
+Map   :: distinct [][]u8
 Guard :: struct {
     position: Position,
     direction: Direction,
@@ -20,11 +18,14 @@ State :: struct {
     guard: Guard,
 }
 
+Direction_Set :: distinct map[Direction]struct{}
+Position_Set  :: distinct map[Position]struct{}
+Guard_Set     :: distinct map[Guard]struct{}
 
-visited: Position_Map
 
 main :: proc() {
     is_inside :: proc(mapped_area: Map, position: Position) -> bool {
+        if position.x < 0 || position.y < 0 { return false }
         return position.y < len(mapped_area) && position.x < len(mapped_area[0])
     }
 
@@ -48,15 +49,21 @@ main :: proc() {
         return nil
     }
 
-    guard_move :: proc(state: ^State) -> bool {
+    guard_move :: proc(
+        state: ^State,
+        pos_set: ^Position_Set = nil,
+        guard_set: ^Guard_Set = nil,
+        makes_loop: ^bool = nil,
+    ) -> bool {
         mapped_area := &state.mapped_area
         guard := &state.guard
 
         // finish if a previously visited state is encountered
         // (meaning we would loop forever)
         // or the guard leaves the mapped area
-        if visited_loc, ok := visited[guard.position]; ok {
-            if _, ok := visited_loc[guard.direction]; ok {
+        if guard_set != nil && makes_loop != nil {
+            if _, ok := guard_set[guard^]; ok {
+                makes_loop^ = true
                 return false
             }
         }
@@ -66,7 +73,13 @@ main :: proc() {
         next := guard.position + offset(guard.direction)
         if !is_inside(mapped_area^, next) || mapped_area[next.y][next.x] == '.' {
             // the next position is empty -- the guard goes straight
-            visited[guard.position] = {}
+            if guard_set != nil {
+                guard_set[guard^] = {}
+            }
+            if pos_set != nil {
+                pos_set[guard.position] = {}
+            }
+
             guard.position = next
         }
         else {
@@ -85,14 +98,54 @@ main :: proc() {
         return
     }
     defer delete(data)
+    guard_initial := state.guard
 
     { // part 1
-        for guard_move(&state) {}
+        visited: Position_Set
+        defer clear(&visited)
+
+        for guard_move(&state, &visited) {}
+
+        // print num. of visited positions
+        fmt.println(len(visited))
+    }
+
+    { // part 2
+        additional_obstructions: Position_Set
+
+        // move the guard once so it's not in the initial position
+        state.guard = guard_initial
+        guard_move(&state)
+
+        visited: Guard_Set
+        for is_inside(state.mapped_area, state.guard.position) {
+            // clear the visited poositions
+            clear(&visited)
+
+            // save the guard state
+            guard := state.guard
+
+            // put an obstruction in the guard's way
+            obstruc_pos := guard.position
+            state.mapped_area[obstruc_pos.y][obstruc_pos.x] = 'O'
+
+            // start from the initial guard state
+            state.guard = guard_initial
+
+            makes_loop := false
+            for guard_move(&state, nil, &visited, &makes_loop) {}
+            if makes_loop {
+                additional_obstructions[obstruc_pos] = {}
+            }
+
+            // restore previous state
+            state.mapped_area[obstruc_pos.y][obstruc_pos.x] = '.'
+            state.guard = guard
+            guard_move(&state)
+        }
 
         // print the final state and num. of visited positions
-        //print_state(state)
-        fmt.println(len(visited))
-        clear(&visited)
+        fmt.println(len(additional_obstructions))
     }
 }
 
@@ -140,7 +193,7 @@ make_initial_state :: proc(path: string) -> (data: []u8, state: State, err: os.E
 }
 
 // debug print
-print_state :: proc(state: State) {
+print_state :: proc(state: State, visited: Position_Set) {
     rune_of_dir :: proc(dir: Direction) -> rune {
         switch dir {
         case .Up:    return '^'
