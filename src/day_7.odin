@@ -3,6 +3,7 @@ package main
 import "core:os"
 import "core:fmt"
 import "core:slice"
+import "core:math"
 import "core:strings"
 import "core:strconv"
 
@@ -24,13 +25,10 @@ main :: proc() {
     add :: proc(a: int, b: int) -> int { return a + b }
     mul :: proc(a: int, b: int) -> int { return a * b }
     concat :: proc(a: int, b: int) -> int {
-        buf: [512]u8
+        log := math.log10(f64(b + 1))
+        log = math.ceil(log)
 
-        str_a := strconv.itoa(buf[:], a)
-        str_b := strconv.itoa(buf[len(str_a):], b)
-
-        str_c := string(buf[:len(str_a) + len(str_b)])
-        return strconv.atoi(str_c)
+        return a * int(math.pow10(log)) + b
     }
 
     could_possibly_be_true :: proc(test_value: int, result: int, numbers: []int) -> bool {
