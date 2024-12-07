@@ -11,6 +11,8 @@ Equation:: struct {
     numbers: [dynamic]int,
 }
 
+operators: []proc(int, int) -> int
+
 main :: proc() {
     equations, err := read_and_parse(os.args[1])
     if err != nil {
@@ -19,20 +21,50 @@ main :: proc() {
     }
     defer delete(equations)
 
+    add :: proc(a: int, b: int) -> int { return a + b }
+    mul :: proc(a: int, b: int) -> int { return a * b }
+    concat :: proc(a: int, b: int) -> int {
+        buf: [512]u8
+
+        str_a := strconv.itoa(buf[:], a)
+        str_b := strconv.itoa(buf[len(str_a):], b)
+
+        str_c := string(buf[:len(str_a) + len(str_b)])
+        return strconv.atoi(str_c)
+    }
+
     could_possibly_be_true :: proc(test_value: int, result: int, numbers: []int) -> bool {
         if slice.is_empty(numbers) {
             return result == test_value
         }
 
-        return could_possibly_be_true(test_value, result + numbers[0], numbers[1:]) ||
-               could_possibly_be_true(test_value, result * numbers[0], numbers[1:])
+        for op in operators {
+            num := op(result, numbers[0])
+            if could_possibly_be_true(test_value, num, numbers[1:]) {
+                return true
+            }
+        }
+
+        return false
     }
 
     { // part 1
+        operators = { add, mul }
         sum := 0
 
         for eq in equations {
-            assert(len(eq.numbers) > 0)
+            is_true := could_possibly_be_true(eq.test_value, eq.numbers[0], eq.numbers[1:])
+            sum += eq.test_value if is_true else 0
+        }
+
+        fmt.println(sum)
+    }
+
+    { // part 2
+        operators = { add, mul, concat }
+        sum := 0
+
+        for eq in equations {
             is_true := could_possibly_be_true(eq.test_value, eq.numbers[0], eq.numbers[1:])
             sum += eq.test_value if is_true else 0
         }
