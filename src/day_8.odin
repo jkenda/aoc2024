@@ -2,6 +2,7 @@ package main
 
 import "core:os"
 import "core:fmt"
+import "core:math"
 import "core:strings"
 
 Map           :: distinct []string
@@ -35,31 +36,62 @@ main :: proc() {
         return true
     }
 
-    find_antinodes :: proc(pos1: Position, pos2: Position) -> [2]Position {
-        distance := pos2 - pos1
-
-        return {
-            pos1 - distance,
-            pos2 + distance,
+    for_all_antenna_permutations :: proc(
+        antenna_map: Map,
+        antenna_positions: Freq_Map, 
+        antinodes_set: ^Position_Set,
+        p: proc(antenna_map: Map, antinodes_set: ^Position_Set, antennas: [2]Position)
+    ) {
+        for freq, positions in antenna_positions {
+            // search all permutations of 2 positions
+            for pos1, i in positions {
+                for pos2 in positions[:i] {
+                    // call proc p on permutation
+                    p(antenna_map, antinodes_set, { pos1, pos2 })
+                }
+            }
         }
     }
 
     { // part 1
         antinodes_set: Position_Set
+        defer delete(antinodes_set)
 
-        for freq, positions in antenna_positions {
-            // search all permutations of 2 positions
-            for pos1, i in positions {
-                for pos2 in positions[:i] {
-                    // add all antinodes that are inside the map
-                    antinodes := find_antinodes(pos1, pos2)
-                    for antinode in antinodes {
-                        if !is_in_map(antenna_map, antinode) { continue }
-                        antinodes_set[antinode] = {}
+        for_all_antenna_permutations(antenna_map, antenna_positions, &antinodes_set,
+            proc(antenna_map: Map, antinodes_set: ^Position_Set, antennas: [2]Position) {
+                distance := antennas[1] - antennas[0]
+
+                antinodes := []Position{
+                    distance[0] - distance,
+                    antennas[1] + distance,
+                }
+
+                for pos in antinodes {
+                    if is_in_map(antenna_map, pos) {
+                        antinodes_set[pos] = {}
                     }
                 }
-            }
-        }
+            })
+
+        fmt.println(len(antinodes_set))
+    }
+
+    { // part 2
+        antinodes_set: Position_Set
+        defer delete(antinodes_set)
+
+        for_all_antenna_permutations(antenna_map, antenna_positions, &antinodes_set,
+            proc(antenna_map: Map, antinodes_set: ^Position_Set, antennas: [2]Position) {
+                distance := antennas[1] - antennas[0]
+                distance /= math.gcd(distance.x, distance.y)
+
+                for pos := antennas[1]; is_in_map(antenna_map, pos); pos -= distance {
+                    antinodes_set[pos] = {}
+                }
+                for pos := antennas[0]; is_in_map(antenna_map, pos); pos += distance {
+                    antinodes_set[pos] = {}
+                }
+            })
 
         fmt.println(len(antinodes_set))
     }
