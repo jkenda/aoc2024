@@ -2,18 +2,19 @@ package main
 
 import "core:os"
 import "core:fmt"
+import "core:slice"
 import "core:strings"
 
 Block :: struct { id, start, size: uint }
 Disk_Map :: distinct [dynamic]Block
 
 main :: proc() {
-    disk_map, err := read_and_parse(os.args[1])
+    data, err := read_and_parse(os.args[1])
     if err != nil {
         fmt.println(err, ":", os.error_string(err))
         return
     }
-    defer delete(disk_map)
+    defer delete(data)
 
     Empty_Space :: struct {
         idx: int,
@@ -21,7 +22,7 @@ main :: proc() {
         new_block: bool,
     }
 
-    find_empty_space :: proc(disk_map: Disk_Map) -> (space: Empty_Space, has_space: bool) {
+    find_empty_space :: proc(disk_map: []Block, min_size: uint = 1) -> (space: Empty_Space, has_space: bool) {
         last_block := &disk_map[len(disk_map) - 1]
 
         for &block, idx in disk_map[1:] {
@@ -29,7 +30,7 @@ main :: proc() {
             space_offset := prev_block.start + prev_block.size
             space_size := block.start - space_offset
 
-            if space_size > 0 {
+            if space_size >= min_size {
                 has_space = true
 
                 if prev_block.id == last_block.id {
@@ -37,7 +38,7 @@ main :: proc() {
                     space = Empty_Space{
                         idx       = idx,
                         new_block = false,
-                        size      = min(space_size, last_block.size),
+                        size      = space_size,
                     }
                 }
                 else {
@@ -46,7 +47,7 @@ main :: proc() {
                         idx       = idx + 1,
                         new_block = true,
                         start     = space_offset,
-                        size      = min(space_size, last_block.size),
+                        size      = space_size,
                     }
                 }
 
@@ -54,14 +55,28 @@ main :: proc() {
             }
         }
 
-        has_space = false
+        return
+    }
+
+    calc_checksum :: proc(disk_map: Disk_Map) -> (fs_checksum: uint) {
+        for &block, idx in disk_map {
+            for block_pos in block.start..<block.start + block.size {
+                fs_checksum += block_pos * block.id
+            }
+        }
         return
     }
 
     { // part 1
-        for space in find_empty_space(disk_map) {
+        disk_map := make(Disk_Map, len(data))
+        copy(disk_map[:], data[:])
+        defer delete(disk_map)
+
+        for space in find_empty_space(disk_map[:]) {
             last_block := &disk_map[len(disk_map) - 1]
-            last_block.size -= space.size
+            size := min(last_block.size, space.size)
+
+            last_block.size -= size
             if last_block.size == 0 {
                 pop(&disk_map)
             }
@@ -70,22 +85,36 @@ main :: proc() {
                 inject_at(&disk_map, space.idx, Block{
                     id    = last_block.id,
                     start = space.start,
-                    size  = space.size,
+                    size  = size,
                 })
             }
             else {
-                disk_map[space.idx].size += space.size
+                disk_map[space.idx].size += size
             }
         }
 
-        fs_checksum : uint = 0
-        for &block, idx in disk_map {
-            for block_pos in block.start..<block.start + block.size {
-                fs_checksum += block_pos * block.id
-            }
+        fmt.println(calc_checksum(disk_map))
+    }
+
+    { // part 2
+        disk_map := make(Disk_Map, len(data))
+        copy(disk_map[:], data[:])
+        defer delete(disk_map)
+
+        #reverse for orig_block in data {
+            g_id = orig_block.id
+            idx, _ := slice.linear_search_proc(disk_map[:], has_id)
+
+            block := disk_map[idx]
+            space, found := find_empty_space(disk_map[:idx+1], block.size)
+            if !found { continue }
+
+            block.start = space.start
+            ordered_remove(&disk_map, idx)
+            inject_at(&disk_map, space.idx, block)
         }
 
-        fmt.println(fs_checksum)
+        fmt.println(calc_checksum(disk_map))
     }
 }
 
@@ -123,19 +152,7 @@ read_and_parse :: proc(path: string) -> (disk_map: Disk_Map, err: os.Error) {
     return
 }
 
-print_fs :: proc(disk_map: Disk_Map) {
-    prev_block_end : uint = 0
-
-    for block in disk_map {
-        for _ in prev_block_end..<block.start {
-            fmt.print('.')
-        }
-
-        for _ in 0..<block.size {
-            fmt.print(block.id)
-        }
-
-        prev_block_end = block.start + block.size
-    }
-    fmt.println()
+g_id: uint
+has_id :: proc(block: Block) -> bool {
+    return block.id == g_id
 }
