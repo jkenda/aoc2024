@@ -4,6 +4,7 @@ import "core:os"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
+import "util"
 
 Block :: struct { id, start, size: uint }
 Disk_Map :: distinct [dynamic]Block
@@ -102,8 +103,8 @@ main :: proc() {
         defer delete(disk_map)
 
         #reverse for orig_block in data {
-            g_id = orig_block.id
-            idx, _ := slice.linear_search_proc(disk_map[:], has_id)
+            idx, _ := util.linear_search_proc_data(disk_map[:], orig_block,
+                proc(a: Block, b: Block) -> bool { return a.id == b.id })
 
             block := disk_map[idx]
             space, found := find_empty_space(disk_map[:idx+1], block.size)
@@ -150,9 +151,4 @@ read_and_parse :: proc(path: string) -> (disk_map: Disk_Map, err: os.Error) {
     }
 
     return
-}
-
-g_id: uint
-has_id :: proc(block: Block) -> bool {
-    return block.id == g_id
 }
