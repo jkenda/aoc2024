@@ -1,0 +1,3 @@
+[submodule "Odin"]
+	path = Odin
+	url = git@github.com:odin-lang/Odin.git
