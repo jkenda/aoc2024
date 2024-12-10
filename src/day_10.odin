@@ -31,9 +31,11 @@ main :: proc() {
         return position.y < len(topographic_map) && position.x < len(topographic_map[0])
     }
 
-    get_traihead_score :: proc(topographic_map: Map, position: Position, visited: ^Position_Set) -> (score: uint) {
-        if _, ok := visited[position]; ok { return 0 }
-        visited[position] = {}
+    get_traihead_score :: proc(topographic_map: Map, position: Position, visited: ^Position_Set = nil) -> (score: uint) {
+        if visited != nil {
+            if _, ok := visited[position]; ok { return 0 }
+            visited[position] = {}
+        }
 
         height := topographic_map[position.y][position.x]
         if height == '9' { return 1 }
@@ -61,6 +63,16 @@ main :: proc() {
         for start in starting_positions {
             clear(&visited)
             score_sum += get_traihead_score(topographic_map, start, &visited)
+        }
+
+        fmt.println(score_sum)
+    }
+
+    { // part 2
+        score_sum : uint = 0
+
+        for start in starting_positions {
+            score_sum += get_traihead_score(topographic_map, start)
         }
 
         fmt.println(score_sum)
