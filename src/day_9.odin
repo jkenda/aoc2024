@@ -103,8 +103,8 @@ main :: proc() {
         defer delete(disk_map)
 
         #reverse for orig_block in data {
-            idx, _ := util.linear_search_proc_data(disk_map[:], orig_block,
-                proc(a: Block, b: Block) -> bool { return a.id == b.id })
+            idx, _ := util.linear_search_proc_data(disk_map[:], orig_block.id,
+                proc(a: Block, id: uint) -> bool { return a.id == id })
 
             block := disk_map[idx]
             space, found := find_empty_space(disk_map[:idx+1], block.size)
