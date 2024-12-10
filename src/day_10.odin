@@ -31,7 +31,7 @@ main :: proc() {
         return position.y < len(topographic_map) && position.x < len(topographic_map[0])
     }
 
-    get_traihead_score :: proc(topographic_map: Map, position: Position, visited: ^Position_Set = nil) -> (score: uint) {
+    get_trailhead_score :: proc(topographic_map: Map, position: Position, visited: ^Position_Set = nil) -> (score: uint) {
         if visited != nil {
             if _, ok := visited[position]; ok { return 0 }
             visited[position] = {}
@@ -40,7 +40,6 @@ main :: proc() {
         height := topographic_map[position.y][position.x]
         if height == '9' { return 1 }
 
-        score_sum : uint = 0
         for step in steps {
             next := position + step
             if !is_in_map(topographic_map, next) { continue }
@@ -48,10 +47,10 @@ main :: proc() {
             next_height := topographic_map[next.y][next.x]
             if next_height != height + 1 { continue }
 
-            score_sum += get_traihead_score(topographic_map, next, visited)
+            score += get_trailhead_score(topographic_map, next, visited)
         }
 
-        return score_sum
+        return
     }
 
     { // part 1
@@ -62,7 +61,7 @@ main :: proc() {
 
         for start in starting_positions {
             clear(&visited)
-            score_sum += get_traihead_score(topographic_map, start, &visited)
+            score_sum += get_trailhead_score(topographic_map, start, &visited)
         }
 
         fmt.println(score_sum)
@@ -72,7 +71,7 @@ main :: proc() {
         score_sum : uint = 0
 
         for start in starting_positions {
-            score_sum += get_traihead_score(topographic_map, start)
+            score_sum += get_trailhead_score(topographic_map, start)
         }
 
         fmt.println(score_sum)
