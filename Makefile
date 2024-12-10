@@ -19,4 +19,3 @@ Odin/odin: Odin/Makefile
 
 clean:
 	'rm' -f *.bin
-	'rm' Odin/odin
